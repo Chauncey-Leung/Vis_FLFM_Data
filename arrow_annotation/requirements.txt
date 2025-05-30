@@ -1,0 +1,4 @@
+napari
+qtpy
+numpy
+tifffile
