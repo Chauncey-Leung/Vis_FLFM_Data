@@ -180,11 +180,20 @@ class MainApp:
     def change_default_path(self):
         new_path = QFileDialog.getExistingDirectory(None, "Select Folder", default_path)
         if new_path:
+            tif_files = sorted(glob.glob(os.path.join(new_path, '*.tif'))
+                               + glob.glob(os.path.join(new_path, '*.tiff')))
+            first_tif = os.path.splitext(tif_files[0])[0]
+
             self.tiff_manager.folder_path = new_path
             self.tiff_manager.reload_file_list()
-            self.save_path_input.setText(os.path.join(new_path, 'saved_vectors.json'))
-            self.load_path_input.setText(os.path.join(new_path, 'saved_vectors.json'))
+            self.save_path_input.setText(os.path.join(new_path, f'{first_tif}.json'))
+            self.load_path_input.setText(os.path.join(new_path, f'{first_tif}.json'))
             self.tiff_manager.load_current()
+            self.snapshot_dir = os.path.join(new_path, 'snapshots')
+            self.tiff_manager.image_layer.mouse_double_click_callbacks.append(self.handle_right_click)
+            os.makedirs(self.snapshot_dir, exist_ok=True)
+            # self.save_path_input.setText(current_json)
+            # self.load_path_input.setText(current_json)
 
     def save_snapshot_and_view(self):
         base_name = os.path.basename(self.tiff_manager.get_current_file_name())
