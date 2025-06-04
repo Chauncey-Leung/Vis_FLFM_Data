@@ -25,7 +25,7 @@
   "image_pixel_size": [ 5, 0.91, 0.91 ],
   "default_colormap": "green",
   "default_arrow_direction": [ 0, 1, 1 ],
-  "default_arrow_length": 25,
+  "default_arrow_length": 17,
   "default_arrow_color": "red",
   "default_arrow_width": 3,
   "default_arrow_opacity": 1.0

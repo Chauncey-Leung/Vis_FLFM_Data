@@ -28,7 +28,6 @@ from tiff_manager import TIFFManager
 import glob
 import json
 
-
 with open('config.json', 'r') as f:
     config = json.load(f)
 default_path = config['default_path']
@@ -43,7 +42,8 @@ default_arrow_opacity = config['default_arrow_opacity']
 
 tif_files = sorted(glob.glob(os.path.join(default_path, '*.tif'))
                    + glob.glob(os.path.join(default_path, '*.tiff')))
-default_json_path = os.path.splitext(tif_files[0])[0]+'.json'
+default_json_path = os.path.splitext(tif_files[0])[0] + '.json'
+
 
 class MainApp:
     def __init__(self):
@@ -65,10 +65,13 @@ class MainApp:
 
         self._init_ui()
         self.tiff_manager.load_current()
+        # self._add_volume_bounding_box()
+        self._add_enhanced_frame_and_grid(grid_interval=60)
 
         self.viewer.layers.selection.clear()
         self.viewer.layers.selection.add(self.tiff_manager.image_layer)
 
+        self.tiff_manager.image_layer.mouse_double_click_callbacks.clear()
         self.tiff_manager.image_layer.mouse_double_click_callbacks.append(self.handle_right_click)
 
     def _init_table(self):
@@ -153,6 +156,11 @@ class MainApp:
         self.tiff_manager.prev()
         current_json = self.tiff_manager.json_path
         self.save_path_input.setText(current_json)
+
+        self._clear_enhanced_grid()
+        self._add_enhanced_frame_and_grid(grid_interval=60)
+
+        self.tiff_manager.image_layer.mouse_double_click_callbacks.clear()
         self.tiff_manager.image_layer.mouse_double_click_callbacks.append(self.handle_right_click)
         self.viewer.layers.selection.clear()
         self.viewer.layers.selection.add(self.tiff_manager.image_layer)
@@ -163,6 +171,11 @@ class MainApp:
         self.tiff_manager.next()
         current_json = self.tiff_manager.json_path
         self.save_path_input.setText(current_json)
+
+        self._clear_enhanced_grid()
+        self._add_enhanced_frame_and_grid(grid_interval=60)
+
+        self.tiff_manager.image_layer.mouse_double_click_callbacks.clear()
         self.tiff_manager.image_layer.mouse_double_click_callbacks.append(self.handle_right_click)
         self.viewer.layers.selection.clear()
         self.viewer.layers.selection.add(self.tiff_manager.image_layer)
@@ -176,6 +189,10 @@ class MainApp:
 
     def load_vectors_from_input(self):
         self.load_vectors(self.load_path_input.text())
+        self.tiff_manager.image_layer.mouse_double_click_callbacks.clear()
+        self.tiff_manager.image_layer.mouse_double_click_callbacks.append(self.handle_right_click)
+        self.viewer.layers.selection.clear()
+        self.viewer.layers.selection.add(self.tiff_manager.image_layer)
 
     def change_default_path(self):
         new_path = QFileDialog.getExistingDirectory(None, "Select Folder", default_path)
@@ -189,8 +206,16 @@ class MainApp:
             self.save_path_input.setText(os.path.join(new_path, f'{first_tif}.json'))
             self.load_path_input.setText(os.path.join(new_path, f'{first_tif}.json'))
             self.tiff_manager.load_current()
-            self.snapshot_dir = os.path.join(new_path, 'snapshots')
+
+            self._clear_enhanced_grid()
+            self._add_enhanced_frame_and_grid(grid_interval=60)
+
+            self.viewer.layers.selection.clear()
+            self.viewer.layers.selection.add(self.tiff_manager.image_layer)
+
+            self.tiff_manager.image_layer.mouse_double_click_callbacks.clear()
             self.tiff_manager.image_layer.mouse_double_click_callbacks.append(self.handle_right_click)
+            self.snapshot_dir = os.path.join(new_path, 'snapshots')
             os.makedirs(self.snapshot_dir, exist_ok=True)
             # self.save_path_input.setText(current_json)
             # self.load_path_input.setText(current_json)
@@ -263,9 +288,8 @@ class MainApp:
                 self.viewer.layers.selection.clear()
                 self.viewer.layers.selection.add(self.tiff_manager.image_layer)
 
-            self. ray_info['first'] = None
+            self.ray_info['first'] = None
             self.ray_info['second'] = None
-
 
     def get_camera_ray(self, event):
         """
@@ -295,6 +319,114 @@ class MainApp:
         if np.isclose(denom, 0): return None
         t, s = (b * e - c * d) / denom, (a * e - b * d) / denom
         return (p1 + t * d1 + p2 + s * d2) / 2
+
+    # def _add_volume_bounding_box(self):
+    #     from main_app import image_pixel_size
+    #     image = self.image_layer
+    #     if image is None:
+    #         return
+    #     else:
+    #         if image.ndim != 3:
+    #             return
+    #
+    #         z, y, x = image.data.shape
+    #         box_vertices = np.array([
+    #             [0, 0, 0],
+    #             [0, 0, x],
+    #             [0, y, 0],
+    #             [0, y, x],
+    #             [z, 0, 0],
+    #             [z, 0, x],
+    #             [z, y, 0],
+    #             [z, y, x],
+    #         ])
+    #         box_vertices = box_vertices * list(image_pixel_size)
+    #
+    #         # 立方体边缘12条线
+    #         edges = [
+    #             [box_vertices[i], box_vertices[j]] for i, j in [
+    #                 (0, 1), (0, 2), (1, 3), (2, 3),  # bottom face
+    #                 (4, 5), (4, 6), (5, 7), (6, 7),  # top face
+    #                 (0, 4), (1, 5), (2, 6), (3, 7)  # vertical edges
+    #             ]
+    #         ]
+    #
+    #         # 添加 Shapes 图层
+    #         self.viewer.add_shapes(
+    #             data=edges,
+    #             shape_type='line',
+    #             edge_color='white',
+    #             edge_width=1,
+    #             name='3D Bounding Box',
+    #             blending='translucent',
+    #             opacity=0.4
+    #         )
+
+    def _add_enhanced_frame_and_grid(self, grid_interval=10):
+        """添加优化版的边框和网格，用于增强3D感知"""
+        image = self.tiff_manager.image_layer
+        if image.ndim != 3:
+            return
+
+        scale = np.array(image.scale)
+        shape = np.array(image.data.shape)
+        z, y, x = shape * scale
+
+        # === 1. 立方体 8 顶点 ===
+        verts = np.array([
+            [0, 0, 0], [0, 0, x], [0, y, 0], [0, y, x],
+            [z, 0, 0], [z, 0, x], [z, y, 0], [z, y, x]
+        ])
+        # 12条边
+        edges = [[verts[i], verts[j]] for i, j in [
+            (0, 1), (0, 2), (1, 3), (2, 3),
+            (4, 5), (4, 6), (5, 7), (6, 7),
+            (0, 4), (1, 5), (2, 6), (3, 7)
+        ]]
+        self.viewer.add_shapes(
+            data=edges,
+            shape_type='line',
+            edge_color='white',
+            edge_width=1,
+            opacity=0.1,
+            name='Bounding Box',
+            blending='additive'
+        )
+
+        # === 2. 网格线：只绘底面和顶面两个 XY 面 ===
+        grid_lines = []
+        z_plane = z
+        for xi in np.arange(0, x + 1e-3, grid_interval):
+            grid_lines.append([[z_plane, 0, xi], [z_plane, y, xi]])
+        for yi in np.arange(0, y + 1e-3, grid_interval):
+            grid_lines.append([[z_plane, yi, 0], [z_plane, yi, x]])
+
+        for x_plane in [0, x]:
+            for zi in np.arange(0, z + 1e-3, grid_interval):
+                grid_lines.append([[zi, 0, x_plane], [zi, y, x_plane]])
+            for yi in np.arange(0, y + 1e-3, grid_interval):
+                grid_lines.append([[0, yi, x_plane], [z, yi, x_plane]])
+
+        for y_plane in [0, y]:
+            for zi in np.arange(0, z + 1e-3, grid_interval):
+                grid_lines.append([[zi, y_plane, 0], [zi, y_plane, x]])
+            for xi in np.arange(0, x + 1e-3, grid_interval):
+                grid_lines.append([[0, y_plane, xi], [z, y_plane, xi]])
+
+        self.viewer.add_shapes(
+            data=grid_lines,
+            shape_type='line',
+            edge_color='white',
+            edge_width=0.8,
+            opacity=0.04,
+            name='Grid XY Planes',
+            blending='translucent'
+        )
+
+    def _clear_enhanced_grid(self):
+        for name in ['Bounding Box', 'Grid XY Planes']:
+            if name in self.viewer.layers:
+                self.viewer.layers.remove(name)
 
 if __name__ == '__main__':
     app = MainApp()
